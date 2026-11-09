@@ -50,6 +50,7 @@ Layers: **U** unit · **I** integration (HTTP + real Postgres, `apps/api/tests/F
 | Analysts (`GET /analysts`) | I `RequesterDirectoryTest` · E |
 | DB invariants (CHECK / UNIQUE / partial unique) | I `SchemaConstraintsTest` (13) |
 | Quota ledger counters / CHECK backstop | I `QuotaLedgerTest`, `QuotaAllocationRepositoryTest` |
-| Contracts drift (PHP enums → TS) | I `ContractsExportTest` · CI diff check |
+| FE/BE contract (shapes + invariants) | I every `LookupApiTest`/`RequesterDirectoryTest` response validated (`AssertsContract`) · U `ContractSchemasTest` (drift rejected) · Vitest `validate.test.ts` · CI `contracts` job |
+| Contracts drift (PHP enums → TS/schema) | I `ContractsExportTest` · CI diff check |
 | Module boundaries | Deptrac (pre-commit + CI) |
 | Web units (countdown, API client, cards, form) | Vitest (`apps/web/src/**/*.test.ts(x)`) |

@@ -17,7 +17,7 @@ Enrichment Lookup Coordinator — shares a 10-lookup/day threat-intel provider q
 - Up: `docker compose up -d --build` · Migrate: `docker compose exec api php artisan migrate`
 - API checks: `docker compose exec api composer lint|analyse|deptrac|test` (Pint, Larastan max, module boundaries, tests)
 - Web checks: `docker compose exec web npm run lint|typecheck|test`
-- Shared enums → TS: `npm run contracts:export` (after changing any `Contracts` or `Shared` enum; CI fails on drift)
+- Shared FE/BE contracts: `npm run contracts` after changing a response shape (`contracts/schemas/*.schema.json`, the single source) or any `Contracts`/`Shared` enum. It regenerates TS enums, the enum schema, both apps' schema copies and the web TS types; CI fails on drift.
 - Seed: `docker compose exec api php artisan db:seed` (idempotent)
 - Token/prompt report: `node scripts/ai-usage.mjs` → `docs/ai/token-usage.md`
 

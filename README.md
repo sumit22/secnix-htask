@@ -32,6 +32,17 @@ The API is split into modules with enforced boundaries (`apps/api/app/Modules`):
 4. **Run holds only its own row lock** across the provider call: concurrent runs of the same lookup wait and then return the stored result; the expiry sweep uses `SKIP LOCKED`, so a lease is never expired (and its unit re-issued) while its lookup is in flight.
 5. **Lock order** is quota row → lookup rows (sweeper skips locked rows), so no deadlock cycle exists.
 
+### FE/BE data integrity
+
+One machine-readable contract, enforced at both ends ([contracts/schemas](contracts/schemas)):
+
+- **Response shapes** are JSON Schemas (with invariants: `lease` only when `leased`, `queue` only when `queued`, `result` only when `completed`, score 0–100, UUIDs, ISO timestamps).
+- **Enum values** (statuses, verdicts, error codes) are generated from the PHP enums, so they cannot diverge.
+- **API:** every integration-test response is validated against the schemas, so the backend cannot ship a shape the contract does not allow.
+- **Web:** TypeScript types are generated from the schemas, and every response is validated at runtime (ajv). A drifting API fails loudly instead of corrupting UI state.
+- **Lease time** is never hard-coded in the UI: the countdown uses the server's `lease.expires_at` corrected by `server_time`, and the TTL itself comes from `GET /quota`.
+- `npm run contracts` regenerates everything; a CI job fails on any drift.
+
 ### Lease expiry and promotion
 
 - Lease = `status = leased` + `lease_expires_at` (TTL 300 s, configurable).

@@ -1,6 +1,8 @@
 # API contract (v1)
 
-Base: `/api/v1`. JSON only. Shared enums/codes: `apps/web/src/contracts/generated.ts`.
+Base: `/api/v1`. JSON only.
+
+**Machine-readable contract:** [`contracts/schemas/`](../contracts/schemas) (JSON Schema, the single source for response shapes, including cross-field invariants such as "`lease` only when `leased`"). Enum values are generated from PHP. The API's integration tests validate every response against these schemas; the web app generates its TS types from them and validates every response at runtime.
 
 ## Conventions
 - **Requester:** `X-Analyst-Id: <user uuid>` on every call (no auth yet). Unknown/missing → `422 analyst_not_found`.
