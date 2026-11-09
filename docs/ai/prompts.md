@@ -33,3 +33,15 @@ before proceeding with commits we need proper git hooks for commit events like p
 ```text
 continue or update
 ```
+
+## 4. 2026-11-09T10:33:15.454Z
+
+```text
+confirm that both apps are ready for development, TDD is setup, use unitest instead of pest in laravel, what about type hardening in php and TS
+```
+
+## 5. 2026-11-09T10:39:20.789Z
+
+```text
+commit and prepare for next
+```
