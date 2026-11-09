@@ -1,0 +1,59 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Support\Indicators;
+
+use App\Enums\IndicatorType;
+
+/**
+ * Detects the indicator type (when not given) and returns a canonical value, so that
+ * "Example.COM" and "example.com" are the same indicator for dedup and quota purposes.
+ */
+final class IndicatorNormalizer
+{
+    /** Hex digests: MD5 (32), SHA-1 (40), SHA-256 (64). */
+    private const array HASH_LENGTHS = [32, 40, 64];
+
+    private const string DOMAIN_PATTERN = '/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63}|xn--[a-z0-9-]{1,59})$/';
+
+    public function normalize(string $raw, ?IndicatorType $type = null): NormalizedIndicator
+    {
+        $candidate = rtrim(strtolower(trim($raw)), '.');
+
+        if ($candidate === '') {
+            throw new InvalidIndicator('Indicator must not be empty.');
+        }
+
+        $detected = $this->detect($candidate);
+
+        if ($detected === null) {
+            throw new InvalidIndicator('Indicator is not a valid IP address, domain or file hash.');
+        }
+
+        if ($type !== null && $type !== $detected->type) {
+            throw new InvalidIndicator(sprintf('Indicator is not a valid %s.', $type->value));
+        }
+
+        return $detected;
+    }
+
+    private function detect(string $value): ?NormalizedIndicator
+    {
+        if (filter_var($value, FILTER_VALIDATE_IP) !== false) {
+            $packed = inet_pton($value);
+
+            return new NormalizedIndicator(IndicatorType::Ip, $packed === false ? $value : (string) inet_ntop($packed));
+        }
+
+        if (in_array(strlen($value), self::HASH_LENGTHS, true) && ctype_xdigit($value)) {
+            return new NormalizedIndicator(IndicatorType::Hash, $value);
+        }
+
+        if (preg_match(self::DOMAIN_PATTERN, $value) === 1) {
+            return new NormalizedIndicator(IndicatorType::Domain, $value);
+        }
+
+        return null;
+    }
+}
