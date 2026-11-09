@@ -30,7 +30,8 @@ Layers: **U** unit · **I** integration (HTTP + real Postgres, `apps/api/tests/F
 | X4 | Other team | 403 `forbidden` | I `test_other_team_cannot_run` |
 | X5 | Queued | 409 `lease_not_active` | I `test_queued_lookup_cannot_run` |
 | X6 | Lease overdue at run time | expire (commits) → release → promote head → 409 `lease_expired` | I `test_run_after_expiry_fails_returns_the_unit_and_promotes_the_queue` · E |
-| X7 | Provider failure | rollback, lease kept, 503 `provider_unavailable` + Retry-After | I `test_provider_failure_keeps_the_lease_for_a_retry` |
+| X7 | Provider failure (domain error or any unexpected exception) | rollback, lease kept, 503 `provider_unavailable` + Retry-After | I `test_provider_failure_keeps_the_lease_for_a_retry`, `test_unexpected_provider_exception_is_provider_unavailable` |
+| X9 | Run in flight + concurrent dedup request | no deadlock (row locks `FOR NO KEY UPDATE`) | C `test_run_in_flight_does_not_deadlock_with_a_deduplicated_request` |
 | X8 | Unknown / malformed id | 404 `not_found` | I `test_unknown_lookup_is_not_found` |
 
 ## Expiry & promotion (LeaseManager, ExpireLeasesService, lazy reads)
@@ -47,6 +48,8 @@ Layers: **U** unit · **I** integration (HTTP + real Postgres, `apps/api/tests/F
 |---|---|
 | Dashboard numbers (`GET /quota`) | I `test_quota_dashboard` · E |
 | Listing + filters (`GET /lookups`) | I `test_recent_lists_newest_first_with_filters` · E (survives reload) |
+| Malformed query params → 422; framework errors (405) → envelope | I `test_malformed_query_params_are_validation_errors`, `test_http_errors_use_the_error_envelope` |
+| Leases never outlive the UTC quota day | I `test_leases_never_outlive_their_quota_day` |
 | Analysts (`GET /analysts`) | I `RequesterDirectoryTest` · E |
 | DB invariants (CHECK / UNIQUE / partial unique) | I `SchemaConstraintsTest` (13) |
 | Quota ledger counters / CHECK backstop | I `QuotaLedgerTest`, `QuotaAllocationRepositoryTest` |

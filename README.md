@@ -144,7 +144,7 @@ The stack is 12-factor: one image per app, config via environment, logs to stder
 - **No authentication** (per brief): the caller is identified by `X-Analyst-Id`. Anyone who can reach the API can act as any analyst; deploy behind a trusted network or add Laravel auth (the header middleware is the single swap point).
 - **Team scope**: a shared (deduplicated) lease can be run by any member of the requesting team.
 - **Quota** is org-level per provider per **UTC day**; a new day is a new allocation row (no destructive reset).
-- **Indicators** are normalised before dedup: lowercase, trailing dot stripped, canonical IP (IPv6 compressed); hashes accepted as MD5/SHA-1/SHA-256 hex.
+- **Indicators** are normalised before dedup: lowercase, trailing dot stripped, canonical IP (IPv6 compressed, IPv4-mapped IPv6 folded to IPv4), Unicode domains converted to punycode; hashes accepted as MD5/SHA-1/SHA-256 hex.
 - A failed provider call is not a state: the lease is kept so the analyst can retry within the TTL.
 - The mock provider returns a random verdict; real providers plug in behind `ThreatIntelProvider`.
 
@@ -154,8 +154,7 @@ The stack is 12-factor: one image per app, config via environment, logs to stder
 - Team-level quota caps (schema supports `team_id` allocations; not enforced — would require per-team FIFO).
 - Per-provider throughput is serialised on one row lock (correct, ~8 s for 200 requests in dev on Windows bind mounts); fine for a 10/day quota, would need sharding of the lock for high-volume providers.
 - Queued requests carry over to the next UTC day and are promoted from its allocation; the queue has no per-requester cap or TTL (a noisy playbook could fill it).
-- Indicator normalisation does not yet fold IPv4-mapped IPv6 (`::ffff:a.b.c.d`) or convert Unicode domains to punycode; private/loopback IPs are accepted.
-- Malformed list/quota query params (e.g. `?requested_by=abc`) and framework errors such as 405 are not yet mapped to the error envelope; an unexpected (non-domain) provider exception returns 500 instead of 503. Fixes are written but not merged (independent audit items 3, 5, 10).
+- Private/loopback IPs are accepted as indicators (internal investigations are legitimate); no per-tenant blocklist.
 - The dashboard poll takes the quota row lock briefly every 3 s (correct, but contends with writes under heavy load).
 - No push updates (the UI polls); no idempotency-key TTL/purge job; no rate limiting.
 
@@ -177,4 +176,4 @@ Authentication (Sanctum) and team-scoped reads · rate limiting per analyst · S
 - A Docker volume hid `vendor/`, `cap_drop: ALL` broke root writes to a tmpfs, and a bootstrap rewrite dropped the default middleware groups — each caught by running the stack, fixed.
 - `jsonb` reorders keys, so the first `run` response differed from later reads — now returns the stored row.
 - Concurrency tests commit real rows (forked processes) and leaked into transactional tests — added truncation on teardown.
-- An **independent AI audit** (a separate agent given only the requirements and code) found two real gaps that all tests had missed: a **deadlock** between a run in flight and a concurrent dedup request (FK `KEY SHARE` vs `FOR UPDATE`; the run could be rolled back after the provider was called), and **leases straddling UTC midnight** (allowing up to 2× the daily limit). Both were reproduced with failing tests first, then fixed (`FOR NO KEY UPDATE`; leases capped at the period end).
+- An **independent AI audit** (a separate agent given only the requirements and code) found two real gaps that all tests had missed: a **deadlock** between a run in flight and a concurrent dedup request (FK `KEY SHARE` vs `FOR UPDATE`; the run could be rolled back after the provider was called), and **leases straddling UTC midnight** (allowing up to 2× the daily limit). Both were reproduced with failing tests first, then fixed (`FOR NO KEY UPDATE`; leases capped at the period end). Its medium findings were fixed the same way: malformed query params now return 422, framework errors (e.g. 405) and unexpected failures keep the error envelope, any provider fault returns 503 with the lease kept, and IPv4-mapped / Unicode indicators normalise to one key.
