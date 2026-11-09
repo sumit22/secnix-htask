@@ -13,3 +13,6 @@ parameters:
     checkMissingCallableSignature: true
     reportUnmatchedIgnoredErrors: true
     treatPhpDocTypesAsCertain: false
+    strictRules:
+        # False positive with Eloquent: Builder methods are forwarded via __call / @method static.
+        dynamicCallOnStaticMethod: false
