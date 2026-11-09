@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Database;
 
-use App\Enums\UserRole;
-use App\Models\Analyst;
-use App\Models\Provider;
-use App\Models\QuotaAllocation;
-use App\Models\Team;
-use App\Models\User;
+use App\Modules\Identity\Contracts\Enums\UserRole;
+use App\Modules\Identity\Domain\Models\Analyst;
+use App\Modules\Identity\Domain\Models\Team;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Providers\Domain\Models\Provider;
+use App\Modules\Quota\Domain\Models\QuotaAllocation;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Enrichment coordinator settings (docs/hld.md §5). Exposed read-only to the web app via the API.
+// Enrichment coordinator settings (docs/hld.md §5).
 return [
 
     // How long a reserved unit is held for its requester before it returns to the pool.

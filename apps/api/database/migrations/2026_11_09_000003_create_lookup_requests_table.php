@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\IndicatorType;
-use App\Enums\LookupStatus;
+use App\Modules\Lookups\Contracts\Enums\LookupStatus;
+use App\Modules\Shared\Indicators\IndicatorType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;

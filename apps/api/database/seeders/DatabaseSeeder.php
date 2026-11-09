@@ -4,20 +4,17 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Enums\UserRole;
-use App\Models\Analyst;
-use App\Models\Provider;
-use App\Models\QuotaAllocation;
-use App\Models\Team;
-use App\Models\User;
+use App\Modules\Identity\Contracts\Enums\UserRole;
+use App\Modules\Identity\Domain\Models\Analyst;
+use App\Modules\Identity\Domain\Models\Team;
+use App\Modules\Identity\Domain\Models\User;
+use App\Modules\Providers\Domain\Models\Provider;
+use App\Modules\Quota\Domain\Repositories\QuotaAllocationRepository;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-/**
- * Reference data: one default team, the mock provider, a few analysts, one playbook and today's
- * org-level quota. Idempotent — safe to run on every deploy.
- */
+/** Idempotent reference data: default team, mock provider, analysts, a playbook and today's org quota. */
 final class DatabaseSeeder extends Seeder
 {
     private const array ANALYSTS = [
@@ -26,7 +23,7 @@ final class DatabaseSeeder extends Seeder
         'carol@analysts.local' => 'Carol (Threat Hunter)',
     ];
 
-    public function run(): void
+    public function run(QuotaAllocationRepository $quotas): void
     {
         $team = Team::query()->firstOrCreate(['slug' => 'default'], ['name' => 'Default Team']);
 
@@ -47,8 +44,8 @@ final class DatabaseSeeder extends Seeder
             ['name' => 'SOAR Playbook', 'role' => UserRole::Playbook, 'team_id' => $team->id, 'password' => Str::random(32)],
         );
 
-        QuotaAllocation::ensureOrgAllocation(
-            $provider,
+        $quotas->ensureOrgAllocation(
+            $provider->id,
             CarbonImmutable::now(),
             config()->integer('enrichment.default_daily_quota'),
         );
