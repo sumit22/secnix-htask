@@ -1,0 +1,19 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Source PDF (confidential; text lives in docs/requirements.md)
+*.pdf
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Dependencies
+node_modules/
