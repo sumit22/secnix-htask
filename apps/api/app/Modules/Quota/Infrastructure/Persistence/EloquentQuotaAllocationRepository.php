@@ -31,4 +31,17 @@ final class EloquentQuotaAllocationRepository implements QuotaAllocationReposito
             ->where('period_start', $start)
             ->sole();
     }
+
+    public function lockById(string $id): QuotaAllocation
+    {
+        return QuotaAllocation::query()->lockForUpdate()->findOrFail($id);
+    }
+
+    public function adjust(string $id, int $reservedDelta, int $consumedDelta): void
+    {
+        QuotaAllocation::query()->whereKey($id)->toBase()->incrementEach(
+            ['reserved' => $reservedDelta, 'consumed' => $consumedDelta],
+            ['updated_at' => now()],
+        );
+    }
 }

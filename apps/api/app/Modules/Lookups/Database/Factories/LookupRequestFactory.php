@@ -13,7 +13,6 @@ use App\Modules\Providers\Domain\Models\Provider;
 use App\Modules\Shared\Indicators\IndicatorType;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /** @extends Factory<LookupRequest> */
 final class LookupRequestFactory extends Factory
