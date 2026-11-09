@@ -5,7 +5,8 @@
   "scripts": {
     "prepare": "lefthook install",
     "ai:usage": "node scripts/ai-usage.mjs",
-    "contracts:export": "docker compose exec -T api php artisan contracts:export > apps/web/src/contracts/generated.ts"
+    "contracts:export": "docker compose exec -T api php artisan contracts:export > apps/web/src/contracts/generated.ts && docker compose exec -T api php artisan contracts:export --schema > contracts/schemas/enums.schema.json",
+    "contracts": "npm run contracts:export && node scripts/contracts.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

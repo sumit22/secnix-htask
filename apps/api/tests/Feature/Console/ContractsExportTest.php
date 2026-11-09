@@ -30,6 +30,18 @@ final class ContractsExportTest extends TestCase
         self::assertStringContainsString('export const ACTIVE_LOOKUP_STATUSES = ["queued", "leased"] as const', $output);
     }
 
+    public function test_exports_enums_as_json_schema_definitions(): void
+    {
+        self::assertSame(0, Artisan::call('contracts:export', ['--schema' => true]));
+        $schema = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
+
+        self::assertIsArray($schema);
+        $definitions = $schema['definitions'] ?? null;
+        self::assertIsArray($definitions);
+        self::assertSame(['type' => 'string', 'enum' => ['queued', 'leased', 'completed', 'expired']], $definitions['LookupStatus'] ?? null);
+        self::assertArrayHasKey('ApiErrorCode', $definitions);
+    }
+
     public function test_output_is_deterministic(): void
     {
         self::assertSame($this->export(), $this->export());
