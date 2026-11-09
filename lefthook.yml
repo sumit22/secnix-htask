@@ -1,0 +1,43 @@
+# Git hooks (installed by `npm install` at repo root via the `prepare` script).
+# PHP tools run inside the api container (no host PHP); web tools use apps/web/node_modules.
+# Skip in an emergency: LEFTHOOK=0 git commit ...
+
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      run: docker run --rm -v "$(pwd):/repo" -w /repo zricethezav/gitleaks:v8.30.1 git --pre-commit --staged --redact --no-banner /repo
+      env:
+        MSYS_NO_PATHCONV: "1"
+    no-env-files:
+      glob: "**/.env"
+      run: 'echo "Refusing to commit .env files - {staged_files}" && exit 1'
+    web-lint:
+      root: apps/web/
+      glob: "*.{ts,tsx,mts,mjs}"
+      run: npx --no -- eslint --max-warnings=0 {staged_files}
+    web-format:
+      root: apps/web/
+      glob: "*.{ts,tsx,mts,mjs,json,css,md}"
+      run: npx --no -- prettier --check {staged_files}
+    web-typecheck:
+      root: apps/web/
+      glob: "*.{ts,tsx,mts}"
+      run: npm run --silent typecheck
+    api-lint-analyse:
+      glob: "apps/api/**/*.php"
+      run: docker compose run --rm --no-deps -T api sh -c "composer lint && composer analyse"
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- commitlint --edit {1}
+
+pre-push:
+  parallel: true
+  commands:
+    web-test:
+      root: apps/web/
+      run: npm test --silent
+    api-test:
+      run: docker compose run --rm --no-deps -T api composer test

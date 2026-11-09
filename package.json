@@ -1,0 +1,14 @@
+{
+  "name": "secnix-htask",
+  "private": true,
+  "description": "Repo-level tooling only (git hooks, commit linting). Apps live in apps/*.",
+  "scripts": {
+    "prepare": "lefthook install",
+    "ai:usage": "node scripts/ai-usage.mjs"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "lefthook": "2.2.2"
+  }
+}
