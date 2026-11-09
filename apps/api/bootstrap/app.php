@@ -2,10 +2,31 @@
 
 declare(strict_types=1);
 
+use App\Modules\Shared\Enums\ApiErrorCode;
+use App\Modules\Shared\Exceptions\DomainError;
+use App\Modules\Shared\Indicators\InvalidIndicator;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+/**
+ * Uniform error envelope (docs/api.md): { error: { code, message, fields? } }.
+ *
+ * @param  array<string, list<string>>  $fields
+ * @param  array<string, string>  $headers
+ */
+$error = static function (ApiErrorCode $code, string $message, array $fields = [], array $headers = []): JsonResponse {
+    $body = ['code' => $code->value, 'message' => $message];
+    if ($fields !== []) {
+        $body['fields'] = $fields;
+    }
+
+    return new JsonResponse(['error' => $body], $code->httpStatus(), $headers);
+};
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,11 +35,18 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
-    })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    // Registers the default middleware groups (incl. "api"); nothing custom yet.
+    ->withMiddleware(static function (Middleware $middleware): void {})
+    ->withExceptions(function (Exceptions $exceptions) use ($error): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->dontReport([DomainError::class, InvalidIndicator::class]);
+        $exceptions->render(fn (DomainError $e) => $error($e->errorCode, $e->getMessage(), [], $e->headers));
+        $exceptions->render(fn (InvalidIndicator $e) => $error(ApiErrorCode::ValidationFailed, $e->getMessage(), ['indicator' => [$e->getMessage()]]));
+        $exceptions->render(fn (ValidationException $e) => $error(ApiErrorCode::ValidationFailed, 'The request is invalid.', $e->errors()));
+        $exceptions->render(fn (NotFoundHttpException $e, Request $request) => $request->is('api/*')
+            ? $error(ApiErrorCode::NotFound, 'Not found.')
+            : null);
     })->create();
