@@ -6,7 +6,9 @@ namespace Tests\Feature\Modules\Lookups;
 
 use App\Modules\Identity\Domain\Models\Analyst;
 use App\Modules\Identity\Domain\Models\Team;
+use App\Modules\Lookups\Contracts\Enums\LookupStatus;
 use App\Modules\Lookups\Contracts\ExpireLeases;
+use App\Modules\Lookups\Domain\Models\LookupRequest;
 use App\Modules\Providers\Application\ProviderCatalogService;
 use App\Modules\Providers\Contracts\ProviderCatalog;
 use App\Modules\Providers\Contracts\ProviderResult;
@@ -17,6 +19,7 @@ use App\Modules\Quota\Domain\Models\QuotaAllocation;
 use App\Modules\Shared\Enums\ApiErrorCode;
 use App\Modules\Shared\Exceptions\DomainError;
 use App\Modules\Shared\Indicators\Indicator;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -285,6 +288,21 @@ final class LookupApiTest extends TestCase
 
         $this->request('d.example.com')->assertJsonPath('data.status', 'leased');
         $this->show($waiting)->assertJsonPath('data.status', 'leased');
+    }
+
+    /** Audit #2: leases taken before UTC midnight must not overlap the next day's fresh allocation. */
+    public function test_leases_never_outlive_their_quota_day(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-09 23:58:00', 'UTC'));
+        $this->request('a.example.com')->assertJsonPath('data.lease.expires_at', '2026-11-10T00:00:00Z');
+        $this->request('b.example.com');
+
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 00:00:01', 'UTC'));
+        $this->request('c.example.com')->assertJsonPath('data.status', 'leased');
+        $this->request('d.example.com')->assertJsonPath('data.status', 'leased');
+        $this->request('e.example.com')->assertJsonPath('data.status', 'queued');
+
+        self::assertSame(2, LookupRequest::query()->where('status', LookupStatus::Leased)->count(), 'live leases ≤ daily limit');
     }
 
     public function test_quota_dashboard(): void

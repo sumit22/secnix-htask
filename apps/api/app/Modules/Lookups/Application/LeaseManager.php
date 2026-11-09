@@ -9,6 +9,7 @@ use App\Modules\Lookups\Domain\Models\LookupRequest;
 use App\Modules\Lookups\Domain\Repositories\LookupRequestRepository;
 use App\Modules\Lookups\Domain\Repositories\WaitingQueue;
 use App\Modules\Quota\Contracts\QuotaLedger;
+use App\Modules\Quota\Contracts\QuotaSnapshot;
 use Carbon\CarbonImmutable;
 use LogicException;
 
@@ -64,20 +65,23 @@ final readonly class LeaseManager
                 continue;
             }
 
-            $this->lease($lookup, $quota->allocationId, $now);
+            $this->lease($lookup, $quota, $now);
             $free--;
         }
     }
 
-    /** Caller holds the quota lock and has checked a unit is free. */
-    public function lease(LookupRequest $lookup, string $allocationId, CarbonImmutable $now): void
+    /**
+     * Caller holds the quota lock and has checked a unit is free.
+     * The lease ends at the allocation's period end at the latest, so it never overlaps the next day's fresh quota.
+     */
+    public function lease(LookupRequest $lookup, QuotaSnapshot $quota, CarbonImmutable $now): void
     {
-        $this->quota->reserve($allocationId);
+        $this->quota->reserve($quota->allocationId);
 
         $this->transition($lookup, LookupStatus::Leased);
-        $lookup->quota_allocation_id = $allocationId;
+        $lookup->quota_allocation_id = $quota->allocationId;
         $lookup->leased_at = $now;
-        $lookup->lease_expires_at = $now->addSeconds($this->leaseTtlSeconds);
+        $lookup->lease_expires_at = $now->addSeconds($this->leaseTtlSeconds)->min($quota->periodEnd);
         $this->lookups->save($lookup);
     }
 

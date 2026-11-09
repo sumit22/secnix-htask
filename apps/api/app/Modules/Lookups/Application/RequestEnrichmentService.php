@@ -78,7 +78,7 @@ final readonly class RequestEnrichmentService implements RequestEnrichment
 
             // A free unit goes to the queue head first; a newcomer leases only when nobody is waiting.
             if ($quota->remaining() > 0 && $this->queue->size($provider->id) === 0) {
-                $this->leases->lease($lookup, $quota->allocationId, $now);
+                $this->leases->lease($lookup, $quota, $now);
             } else {
                 $this->queue->enqueue($provider->id, $lookup->id);
             }
