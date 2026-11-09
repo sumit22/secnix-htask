@@ -3,10 +3,17 @@
   "private": true,
   "description": "Repo-level tooling only (git hooks, commit linting). Apps live in apps/*.",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "test:api": "docker compose exec -T api composer check",
+    "test:web": "docker compose exec -T web npm run check",
+    "test:e2e": "node scripts/e2e.mjs",
+    "test:e2e:review": "node scripts/e2e.mjs --review",
+    "test:load": "docker compose exec -T api php artisan migrate:fresh --seed --force && node scripts/load-test.mjs",
+    "down": "docker compose down",
     "prepare": "lefthook install",
-    "ai:usage": "node scripts/ai-usage.mjs",
+    "contracts": "npm run contracts:export && node scripts/contracts.mjs",
     "contracts:export": "docker compose exec -T api php artisan contracts:export > apps/web/src/contracts/generated.ts && docker compose exec -T api php artisan contracts:export --schema > contracts/schemas/enums.schema.json",
-    "contracts": "npm run contracts:export && node scripts/contracts.mjs"
+    "ai:usage": "node scripts/ai-usage.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
