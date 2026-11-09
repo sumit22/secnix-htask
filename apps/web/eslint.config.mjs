@@ -19,6 +19,12 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      eqeqeq: ["error", "always"],
+      "@typescript-eslint/switch-exhaustiveness-check": "error",
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/no-floating-promises": "error",
+    },
   },
   prettier,
   globalIgnores([
