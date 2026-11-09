@@ -2,7 +2,43 @@
 
 Shares a scarce threat-intel provider quota (10 lookups/day) between many analysts and automated playbooks: **leases** a unit for 5 minutes, **queues** requests FIFO when none is free, **deduplicates** indicators, makes retries **idempotent**, and **never exceeds the quota** — proven with ~200 concurrent requests.
 
-Requirements: [docs/requirements.md](docs/requirements.md) · Design: [docs/hld.md](docs/hld.md) · API: [docs/api.md](docs/api.md) · Test matrix: [docs/test-matrix.md](docs/test-matrix.md)
+## For reviewers: start here
+
+### 1. Run it (≈ 5 min, first build included)
+
+Prerequisites: **Docker** (Desktop or Engine with Compose v2), **Node.js ≥ 22**, **git**. Free ports: 3000, 8000, 54329.
+
+```bash
+git clone <this repo> && cd secnix-htask
+npm run setup          # .env + app key, build, deps, start, migrate, seed — re-runnable
+```
+
+Open **http://localhost:3000**, pick an analyst, request an indicator (e.g. `8.8.8.8`, `evil.example.com`, a SHA-256), watch the lease countdown, press **Run lookup**. Request 11+ distinct indicators to see queueing; open a second browser profile as another analyst and request the same indicator to see dedup.
+
+### 2. Run the tests
+
+| What | Command | Notes |
+|---|---|---|
+| API: Pint, Larastan max, Deptrac, PHPUnit (unit, integration on real Postgres, forked-process concurrency) | `npm run test:api` | ~1 min |
+| Web: ESLint, tsc, Prettier, Vitest | `npm run test:web` | |
+| Browser E2E, every UI flow (Playwright) | `npm run test:e2e` | switches the stack to an 8 s lease / quota 2, then restores it |
+| Same, **visible browser in slow motion** | `npm run test:e2e:review` | `SLOWMO=800 npm run test:e2e:review` to slow further |
+| ~200 simultaneous HTTP requests + invariant check | `npm run test:load` | reseeds the DB first |
+
+Stop everything: `npm run down` (add `-- -v` to drop the data volumes).
+
+### 3. Where to look (suggested 15-minute tour)
+
+| Question | Read |
+|---|---|
+| What was asked? | [docs/requirements.md](docs/requirements.md) (source of truth) |
+| How is it designed and why? | [docs/hld.md](docs/hld.md) — schema, state machine, concurrency, queues, modules |
+| What does the API promise? | [docs/api.md](docs/api.md) + machine-readable [contracts/schemas](contracts/schemas) |
+| Which test proves which rule? | [docs/test-matrix.md](docs/test-matrix.md) — requirement → branch → test |
+| The core logic | [Lookups/Application](apps/api/app/Modules/Lookups/Application) — `RequestEnrichmentService`, `RunLookupService`, `LeaseManager` |
+| The DB guarantees | [migrations](apps/api/database/migrations) (CHECK / UNIQUE / partial unique index) |
+| Concurrency proof | [ConcurrencyTest.php](apps/api/tests/Feature/Modules/Lookups/ConcurrencyTest.php), [scripts/load-test.mjs](scripts/load-test.mjs) |
+| How AI was used | [AI usage](#ai-usage) below, [docs/ai/](docs/ai) (prompts, chat, tokens) |
 
 ## Tech stack
 
@@ -26,11 +62,12 @@ The API is split into modules with enforced boundaries (`apps/api/app/Modules`):
 
 ### How the quota is protected under concurrency
 
-1. **One serialisation point per provider.** Every reservation decision runs in a transaction that first takes `SELECT … FOR UPDATE` on that day's quota row. Idempotency lookup, indicator dedup and lease-vs-queue are all decided *after* the lock, so concurrent requests cannot interleave.
+1. **One serialisation point per provider.** Every reservation decision runs in a transaction that first row-locks that day's quota row (`SELECT … FOR NO KEY UPDATE`). Idempotency lookup, indicator dedup and lease-vs-queue are all decided *after* the lock, so concurrent requests cannot interleave.
 2. **The database refuses to overspend.** `CHECK (reserved + consumed <= quota_limit)` and non-negative counters; counters change only by atomic `UPDATE … SET reserved = reserved + 1`. A bug in application code cannot exceed the quota.
 3. **Uniqueness in the schema.** Partial unique index: one `queued|leased` lookup per (provider, type, normalised value). `UNIQUE (requested_by, idempotency_key)` in a separate `idempotency_keys` table — every request records its key, **including deduplicated ones**, so a retry after the shared lookup finishes still maps to it and never spends a unit.
 4. **Run holds only its own row lock** across the provider call: concurrent runs of the same lookup wait and then return the stored result; the expiry sweep uses `SKIP LOCKED`, so a lease is never expired (and its unit re-issued) while its lookup is in flight.
-5. **Lock order** is quota row → lookup rows (sweeper skips locked rows), so no deadlock cycle exists.
+5. **No deadlocks.** Row locks are `FOR NO KEY UPDATE`, which does not conflict with the `FOR KEY SHARE` that foreign-key checks take; with the sweeper skipping locked rows, a run in flight and a concurrent dedup request cannot deadlock (regression-tested with a slow provider).
+6. **Day boundary.** A lease never outlives its quota day (`expires_at ≤ period_end`), so leases from before UTC midnight cannot overlap the next day's fresh allocation.
 
 ### FE/BE data integrity
 
@@ -51,31 +88,19 @@ One machine-readable contract, enforced at both ends ([contracts/schemas](contra
 
 State machine: `queued → leased → completed | expired` (enforced in `LookupStatus` and by guarded updates).
 
-## Run locally
-
-Prerequisites: Docker Desktop, Node ≥ 22 (only for git hooks and scripts).
+## Manual commands (what `npm run setup` / `test:*` do)
 
 ```bash
-cp .env.example .env
-docker compose run --rm api php artisan key:generate --show   # paste into APP_KEY in .env
-docker compose up -d --build
+cp .env.example .env                                     # then set APP_KEY (npm run setup generates one)
+docker compose build
+docker compose run --rm --no-deps api composer install   # dev containers bind-mount the source, so vendor/ lives there
+docker compose up -d
 docker compose exec api php artisan migrate --seed
-npm install                                                     # installs git hooks (optional)
+docker compose exec api composer check                   # API gate
+docker compose exec web npm run check                    # web gate
 ```
 
-Open http://localhost:3000 (API on http://localhost:8000, health `GET /up`).
-
-## Tests
-
-| Suite | Command |
-|---|---|
-| API (unit, integration on real Postgres, forked-process concurrency) | `docker compose exec api composer test` |
-| API full gate (Pint, Larastan max, Deptrac, tests) | `docker compose exec api composer check` |
-| Web (lint, types, format, Vitest) | `cd apps/web && npm run check` |
-| 200 concurrent HTTP requests + invariant checks | `docker compose exec api php artisan migrate:fresh --seed && node scripts/load-test.mjs` |
-| Browser E2E (Playwright) | see [apps/e2e/README.md](apps/e2e/README.md) |
-
-Coverage by requirement and branch: [docs/test-matrix.md](docs/test-matrix.md).
+Services: `db` (Postgres 18, host port 54329), `api` (:8000, health `/up`), `worker` (queue), `scheduler` (expiry sweep), `web` (:3000). Optional: `npm install` at the root installs the git hooks (lefthook).
 
 ## API
 
@@ -128,7 +153,10 @@ The stack is 12-factor: one image per app, config via environment, logs to stder
 - Authentication/authorisation beyond the team check on run; reads (`GET /lookups*`) are not team-scoped.
 - Team-level quota caps (schema supports `team_id` allocations; not enforced — would require per-team FIFO).
 - Per-provider throughput is serialised on one row lock (correct, ~8 s for 200 requests in dev on Windows bind mounts); fine for a 10/day quota, would need sharding of the lock for high-volume providers.
-- Leases issued yesterday release into yesterday's allocation; queued requests carry over and are promoted from today's allocation.
+- Queued requests carry over to the next UTC day and are promoted from its allocation; the queue has no per-requester cap or TTL (a noisy playbook could fill it).
+- Indicator normalisation does not yet fold IPv4-mapped IPv6 (`::ffff:a.b.c.d`) or convert Unicode domains to punycode; private/loopback IPs are accepted.
+- Malformed list/quota query params (e.g. `?requested_by=abc`) and framework errors such as 405 are not yet mapped to the error envelope; an unexpected (non-domain) provider exception returns 500 instead of 503. Fixes are written but not merged (independent audit items 3, 5, 10).
+- The dashboard poll takes the quota row lock briefly every 3 s (correct, but contends with writes under heavy load).
 - No push updates (the UI polls); no idempotency-key TTL/purge job; no rate limiting.
 
 ## What I would improve with more time
@@ -149,3 +177,4 @@ Authentication (Sanctum) and team-scoped reads · rate limiting per analyst · S
 - A Docker volume hid `vendor/`, `cap_drop: ALL` broke root writes to a tmpfs, and a bootstrap rewrite dropped the default middleware groups — each caught by running the stack, fixed.
 - `jsonb` reorders keys, so the first `run` response differed from later reads — now returns the stored row.
 - Concurrency tests commit real rows (forked processes) and leaked into transactional tests — added truncation on teardown.
+- An **independent AI audit** (a separate agent given only the requirements and code) found two real gaps that all tests had missed: a **deadlock** between a run in flight and a concurrent dedup request (FK `KEY SHARE` vs `FOR UPDATE`; the run could be rolled back after the provider was called), and **leases straddling UTC midnight** (allowing up to 2× the daily limit). Both were reproduced with failing tests first, then fixed (`FOR NO KEY UPDATE`; leases capped at the period end).
