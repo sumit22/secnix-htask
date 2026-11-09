@@ -23,9 +23,11 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Concerns\AssertsContract;
 use Tests\TestCase;
+use Throwable;
 
 /** End-to-end API behaviour against real Postgres: every branch of docs/api.md. */
 final class LookupApiTest extends TestCase
@@ -345,6 +347,33 @@ final class LookupApiTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    /** Audit #5: malformed query params are validation errors, never 500s. */
+    public function test_malformed_query_params_are_validation_errors(): void
+    {
+        foreach (['/api/v1/lookups?requested_by=abc', '/api/v1/lookups?requested_by[]=x', '/api/v1/lookups?status=bogus', '/api/v1/quota?provider[]=x'] as $url) {
+            $this->withHeaders(['X-Analyst-Id' => $this->alice->id])->getJson($url)
+                ->assertStatus(422)->assertJsonPath('error.code', ApiErrorCode::ValidationFailed->value);
+        }
+    }
+
+    /** Audit #5: framework HTTP errors use the same envelope. */
+    public function test_http_errors_use_the_error_envelope(): void
+    {
+        $this->deleteJson('/api/v1/lookups')->assertStatus(405)->assertJsonPath('error.code', ApiErrorCode::HttpError->value);
+    }
+
+    /** Audit #3: an unexpected provider exception is a 503 with the lease kept, not a 500. */
+    public function test_unexpected_provider_exception_is_provider_unavailable(): void
+    {
+        $id = $this->request('8.8.8.8')->json('data.id');
+        $this->failProvider(new RuntimeException('connection reset'));
+
+        $this->runLookup($id)->assertStatus(503)
+            ->assertJsonPath('error.code', ApiErrorCode::ProviderUnavailable->value)
+            ->assertHeader('Retry-After');
+        $this->assertQuota(reserved: 1, consumed: 0);
+    }
+
     // ------------------------------------------------------------- helpers
 
     /** @return TestResponse<Response> */
@@ -381,13 +410,16 @@ final class LookupApiTest extends TestCase
         self::assertSame([$reserved, $consumed], [$quota->reserved ?? 0, $quota->consumed ?? 0], 'reserved/consumed');
     }
 
-    private function failProvider(): void
+    private function failProvider(?Throwable $error = null): void
     {
-        $failing = new class implements ThreatIntelProvider
+        $error ??= new DomainError(ApiErrorCode::ProviderUnavailable, 'Provider timed out.', ['Retry-After' => '5']);
+        $failing = new class($error) implements ThreatIntelProvider
         {
+            public function __construct(private readonly Throwable $error) {}
+
             public function lookup(Indicator $indicator): ProviderResult
             {
-                throw new DomainError(ApiErrorCode::ProviderUnavailable, 'Provider timed out.', ['Retry-After' => '5']);
+                throw $this->error;
             }
         };
 
