@@ -23,7 +23,7 @@ describe("LookupCard", () => {
     render(
       <LookupCard
         lookup={sampleLookup({
-          id: "l9",
+          id: "01a1c02f-0000-7000-8000-000000000009",
           status: "leased",
           queue: null,
           lease: {
@@ -42,7 +42,7 @@ describe("LookupCard", () => {
     expect(screen.getByText(/01:28/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Run lookup" }));
-    expect(onRun).toHaveBeenCalledWith("l9");
+    expect(onRun).toHaveBeenCalledWith("01a1c02f-0000-7000-8000-000000000009");
   });
 
   it("applies server clock offset to the countdown", () => {

@@ -26,6 +26,14 @@ export default defineConfig([
       "@typescript-eslint/no-floating-promises": "error",
     },
   },
+  {
+    // Generated from contracts/schemas; style is the generator's, types are still checked.
+    files: ["src/contracts/api.generated.ts"],
+    rules: {
+      "@typescript-eslint/consistent-indexed-object-style": "off",
+      "@typescript-eslint/consistent-type-definitions": "off",
+    },
+  },
   prettier,
   globalIgnores([
     ".next/**",

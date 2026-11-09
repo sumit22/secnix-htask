@@ -3,11 +3,11 @@ import type { LookupView, QuotaView } from "../contracts/api";
 // Test helpers only.
 export function sampleLookup(over: Partial<LookupView> = {}): LookupView {
   return {
-    id: "l1",
+    id: "01a1c02f-0000-7000-8000-000000000001",
     status: "queued",
     indicator: { type: "domain", value: "evil.example.com" },
     provider: "mock-intel",
-    requested_by: "a1",
+    requested_by: "01a1c02f-0000-7000-8000-0000000000a1",
     deduplicated: false,
     lease: null,
     queue: { position: 3 },

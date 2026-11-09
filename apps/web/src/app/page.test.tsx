@@ -12,7 +12,16 @@ it("renders the dashboard with quota and analyst picker", async () => {
       const data = url.endsWith("/quota")
         ? sampleQuota()
         : url.endsWith("/analysts")
-          ? [{ id: "a1", name: "Alice", team: { id: "t1", slug: "default" } }]
+          ? [
+              {
+                id: "01a1c02f-0000-7000-8000-0000000000a1",
+                name: "Alice",
+                team: {
+                  id: "01a1c02f-0000-7000-8000-0000000000f1",
+                  slug: "default",
+                },
+              },
+            ]
           : [];
       return Promise.resolve(new Response(JSON.stringify({ data })));
     }),

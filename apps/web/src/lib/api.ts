@@ -4,7 +4,13 @@ import type {
   LookupView,
   QuotaView,
 } from "../contracts/api";
-import { ApiErrorCode } from "../contracts/generated";
+import type { ApiErrorCode } from "../contracts/generated";
+import {
+  isAnalyst,
+  isApiErrorEnvelope,
+  isLookupView,
+  isQuotaView,
+} from "../contracts/validate";
 import { readEnv } from "./env";
 
 export type ClientErrorCode = "network_error" | "unknown_error";
@@ -23,42 +29,6 @@ export class ApiError extends Error {
     this.code = code;
     this.status = status;
   }
-}
-
-type Json = Record<string, unknown>;
-
-function isRecord(v: unknown): v is Json {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-const ERROR_CODES: readonly string[] = Object.values(ApiErrorCode);
-
-function isErrorCode(v: unknown): v is ApiErrorCode {
-  return typeof v === "string" && ERROR_CODES.includes(v);
-}
-
-// Minimal shape checks on the fields the UI relies on.
-function isLookupView(v: unknown): v is LookupView {
-  return (
-    isRecord(v) &&
-    typeof v.id === "string" &&
-    typeof v.status === "string" &&
-    isRecord(v.indicator) &&
-    typeof v.server_time === "string"
-  );
-}
-
-function isQuotaView(v: unknown): v is QuotaView {
-  return (
-    isRecord(v) &&
-    typeof v.limit === "number" &&
-    typeof v.remaining === "number" &&
-    typeof v.server_time === "string"
-  );
-}
-
-function isAnalyst(v: unknown): v is Analyst {
-  return isRecord(v) && typeof v.id === "string" && typeof v.name === "string";
 }
 
 function listOf<T>(guard: (v: unknown) => v is T): (v: unknown) => v is T[] {
@@ -94,10 +64,8 @@ async function request<T>(
 
   const payload: unknown = await res.json().catch(() => null);
   if (!res.ok) {
-    const err = isRecord(payload) ? payload.error : undefined;
-    if (isRecord(err) && isErrorCode(err.code)) {
-      const message = typeof err.message === "string" ? err.message : err.code;
-      throw new ApiError(err.code, res.status, message);
+    if (isApiErrorEnvelope(payload)) {
+      throw new ApiError(payload.error.code, res.status, payload.error.message);
     }
     throw new ApiError(
       "unknown_error",
@@ -105,7 +73,13 @@ async function request<T>(
       `Request failed (${String(res.status)})`,
     );
   }
-  if (isRecord(payload) && guard(payload.data)) return payload.data;
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "data" in payload &&
+    guard(payload.data)
+  )
+    return payload.data;
   throw new ApiError("unknown_error", res.status, "Unexpected response shape");
 }
 
