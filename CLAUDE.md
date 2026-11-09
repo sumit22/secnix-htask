@@ -17,6 +17,8 @@ Enrichment Lookup Coordinator — shares a 10-lookup/day threat-intel provider q
 - Up: `docker compose up -d --build` · Migrate: `docker compose exec api php artisan migrate`
 - API checks: `docker compose exec api composer lint|analyse|test` (Pint, Larastan max, tests)
 - Web checks: `docker compose exec web npm run lint|typecheck|test`
+- Shared enums → TS: `npm run contracts:export` (after changing any `app/Enums/*`; CI fails on drift)
+- Seed: `docker compose exec api php artisan db:seed` (idempotent)
 - Token/prompt report: `node scripts/ai-usage.mjs` → `docs/ai/token-usage.md`
 
 ## TDD
