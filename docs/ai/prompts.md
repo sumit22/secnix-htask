@@ -90,3 +90,70 @@ how we are going to manage queues, for now db queues are fine supported by larav
 ```text
 okay start dev with TDD, models migrations, config and other things as discussed above first
 ```
+
+## 12. 2026-11-09T11:21:52.069Z
+
+```text
+ensure to have precise but minimal commnets are present
+though its small app i want to restrucutre in modules with strict module boundaries
+
+Laravel/eloquent do not provide inbuilt repositories, but we are going to build this with services and service interfaces to as per solid principles, 12 factor app
+
+we missed this and this is right time to course correct
+
+identify core service classes and interfaces, ask atomic questions where required or you are blocked
+```
+
+## 13. 2026-11-09T11:34:28.936Z
+
+```text
+okay lets discuss all the API endpoints and respective contracts
+```
+
+## 14. 2026-11-09T12:05:23.385Z
+
+```text
+Business rules
+The system must never allow more lookups than the quota, even under about 200 simultaneous requests
+An indicator can have at most one active lookup (leased or queued) at a time. Requests for the same indicator should not consume additional quota.
+If a client retries a request with the same idempotency key, it must not consume a second unit
+When no quota is available, requests are queued and promoted in the order they arrived
+Scope note
+Time is limited. A working core (request, run, expiry, never exceed quota) matters more than a complete feature set. Decide what to prioritise and document what you chose to leave out.Business rules
+The system must never allow more lookups than the quota, even under about 200 simultaneous requests
+An indicator can have at most one active lookup (leased or queued) at a time. Requests for the same indicator should not consume additional quota.
+If a client retries a request with the same idempotency key, it must not consume a second unit
+When no quota is available, requests are queued and promoted in the order they arrived
+Scope note
+Time is limited. A working core (request, run, expiry, never exceed quota) matters more than a complete feature set. Decide what to prioritise and document what you chose to leave out.
+
+confirm that we are aligned, and core is ready
+```
+
+## 15. 2026-11-09T12:16:09.970Z
+
+```text
+no need to generate video, just run headed slowmo playwrite tests for all flow branches
+```
+
+## 16. 2026-11-09T12:20:15.562Z
+
+```text
+Lease never run → "expired", Run button gone, unit returned
+
+how this is implemented in FE and BE
+```
+
+## 17. 2026-11-09T12:21:29.838Z
+
+```text
+ensure shared data integrity across fe and be, like lease time etc
+```
+
+## 18. 2026-11-09T12:40:38.653Z
+
+```text
+meanwhile ensure that readme is reviewer centric, they can install and run this locally with docker, run playwrite tests and other tests with ease and navigate docs properly
+
+let me know if we can share this now with reviwers
+```
