@@ -19,6 +19,12 @@ Enrichment Lookup Coordinator — shares a 10-lookup/day threat-intel provider q
 - Web checks: `docker compose exec web npm run lint|typecheck|test`
 - Token/prompt report: `node scripts/ai-usage.mjs` → `docs/ai/token-usage.md`
 
+## TDD
+- Red → green → refactor: write the failing test first, then the minimum code to pass.
+- API: PHPUnit 12 (no Pest), Feature tests hit real Postgres `app_test` (`RefreshDatabase`); assertions via `self::assert*`. Quota/concurrency rules need tests that prove the invariant.
+- Web: Vitest + Testing Library (`npm run test:watch`), `*.test.ts(x)` next to the code.
+- One-shot gates: `composer check` (api), `npm run check` (web).
+
 ## Rules
 - Correctness of quota under concurrency lives in the **database** (transactions, row locks / conditional updates, unique constraints) — never in app memory.
 - PHP: `declare(strict_types=1)`, typed everything, Larastan max must pass. TS: strict config, no `any`, lint + typecheck must pass.
