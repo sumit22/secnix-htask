@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://secnix.local/contracts/api-error.schema.json",
+  "title": "ApiErrorEnvelope",
+  "description": "Body of every non-2xx API response.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "$ref": "enums.schema.json#/definitions/ApiErrorCode" },
+        "message": { "type": "string" },
+        "fields": {
+          "type": "object",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

@@ -24,11 +24,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Concerns\AssertsContract;
 use Tests\TestCase;
 
 /** End-to-end API behaviour against real Postgres: every branch of docs/api.md. */
 final class LookupApiTest extends TestCase
 {
+    use AssertsContract;
     use RefreshDatabase;
 
     private Analyst $alice;
@@ -166,7 +168,8 @@ final class LookupApiTest extends TestCase
             ->postJson('/api/v1/lookups', $body)
             ->assertStatus(422)
             ->assertJsonPath('error.code', ApiErrorCode::ValidationFailed->value)
-            ->assertJsonStructure(['error' => ['fields' => [$field]]]);
+            ->assertJsonStructure(['error' => ['fields' => [$field]]])
+            ->tap(fn ($r) => $this->assertMatchesContract('api-error.schema.json', $r->json()));
         $this->assertQuota(reserved: 0, consumed: 0);
     }
 
@@ -319,6 +322,7 @@ final class LookupApiTest extends TestCase
             ->assertJsonPath('data.remaining', 0)
             ->assertJsonPath('data.queued', 1)
             ->assertJsonPath('data.lease_ttl_seconds', 300);
+        $this->assertMatchesContract('quota-view.schema.json', $this->withHeaders(['X-Analyst-Id' => $this->alice->id])->getJson('/api/v1/quota')->json('data'));
     }
 
     public function test_recent_lists_newest_first_with_filters(): void
@@ -332,6 +336,9 @@ final class LookupApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('data.0.indicator.value', 'c.example.com');
+        foreach ((array) $this->withHeaders(['X-Analyst-Id' => $this->alice->id])->getJson('/api/v1/lookups')->json('data') as $view) {
+            $this->assertMatchesContract('lookup-view.schema.json', $view);
+        }
 
         $this->withHeaders(['X-Analyst-Id' => $this->alice->id])
             ->getJson('/api/v1/lookups?status=queued')
@@ -343,22 +350,22 @@ final class LookupApiTest extends TestCase
     /** @return TestResponse<Response> */
     private function request(string $indicator, ?Analyst $as = null, ?string $key = null): TestResponse
     {
-        return $this->withHeaders([
+        return $this->assertLookupContract($this->withHeaders([
             'Idempotency-Key' => $key ?? (string) Str::uuid(),
             'X-Analyst-Id' => ($as ?? $this->alice)->id,
-        ])->postJson('/api/v1/lookups', ['indicator' => $indicator]);
+        ])->postJson('/api/v1/lookups', ['indicator' => $indicator]));
     }
 
     /** @return TestResponse<Response> */
     private function runLookup(mixed $id, ?Analyst $as = null): TestResponse
     {
-        return $this->withHeaders(['X-Analyst-Id' => ($as ?? $this->alice)->id])->postJson("/api/v1/lookups/{$this->str($id)}/run");
+        return $this->assertLookupContract($this->withHeaders(['X-Analyst-Id' => ($as ?? $this->alice)->id])->postJson("/api/v1/lookups/{$this->str($id)}/run"));
     }
 
     /** @return TestResponse<Response> */
     private function show(mixed $id): TestResponse
     {
-        return $this->withHeaders(['X-Analyst-Id' => $this->alice->id])->getJson("/api/v1/lookups/{$this->str($id)}");
+        return $this->assertLookupContract($this->withHeaders(['X-Analyst-Id' => $this->alice->id])->getJson("/api/v1/lookups/{$this->str($id)}"));
     }
 
     private function str(mixed $value): string

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://secnix.local/contracts/quota-view.schema.json",
+  "title": "QuotaView",
+  "description": "Dashboard numbers for one provider's current quota period. remaining = limit - reserved - consumed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["provider", "period", "limit", "reserved", "consumed", "remaining", "queued", "lease_ttl_seconds", "server_time"],
+  "properties": {
+    "provider": { "type": "string", "minLength": 1 },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "limit": { "type": "integer", "minimum": 0 },
+    "reserved": { "type": "integer", "minimum": 0 },
+    "consumed": { "type": "integer", "minimum": 0 },
+    "remaining": { "type": "integer", "minimum": 0 },
+    "queued": { "type": "integer", "minimum": 0 },
+    "lease_ttl_seconds": { "type": "integer", "minimum": 1 },
+    "server_time": { "type": "string", "format": "date-time" }
+  }
+}

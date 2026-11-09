@@ -9,10 +9,12 @@ use App\Modules\Identity\Contracts\RequesterDirectory;
 use App\Modules\Identity\Domain\Models\Analyst;
 use App\Modules\Identity\Domain\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\AssertsContract;
 use Tests\TestCase;
 
 final class RequesterDirectoryTest extends TestCase
 {
+    use AssertsContract;
     use RefreshDatabase;
 
     public function test_find_returns_requester_with_team(): void
@@ -47,7 +49,11 @@ final class RequesterDirectoryTest extends TestCase
     {
         $analyst = Analyst::factory()->create(['name' => 'Alice']);
 
-        $this->getJson('/api/v1/analysts')
+        $response = $this->getJson('/api/v1/analysts');
+        foreach ((array) $response->json('data') as $item) {
+            $this->assertMatchesContract('analyst.schema.json', $item);
+        }
+        $response
             ->assertOk()
             ->assertExactJson(['data' => [[
                 'id' => $analyst->id,
