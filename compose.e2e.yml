@@ -1,0 +1,9 @@
+# E2E overrides: short lease TTL and tiny daily quota so expiry/queueing are testable in seconds.
+# docker compose -f docker-compose.yml -f compose.override.yml -f compose.e2e.yml up -d
+services:
+  api: &e2e-env
+    environment:
+      ENRICHMENT_LEASE_TTL_SECONDS: "8"
+      ENRICHMENT_DEFAULT_DAILY_QUOTA: "2"
+  worker: *e2e-env
+  scheduler: *e2e-env
