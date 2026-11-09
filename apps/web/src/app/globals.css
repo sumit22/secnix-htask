@@ -1,4 +1,143 @@
+:root {
+  color-scheme: light dark;
+  --bg: #fff;
+  --fg: #1a1a1a;
+  --muted: #5a5a5a;
+  --border: #d0d0d0;
+  --accent: #2557d6;
+  --accent-fg: #fff;
+  --danger: #b3261e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --fg: #ececec;
+    --muted: #a0a0a0;
+    --border: #3a3a3a;
+    --accent: #7aa2ff;
+    --accent-fg: #0b1220;
+    --danger: #ff8a80;
+  }
+}
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.5;
+}
+
+.dash {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.mono {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.form {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1rem 0;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+input,
+select,
+button {
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+}
+
+button {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.quota {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.quota div {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.quota dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.quota dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.card h3,
+.card p {
+  margin: 0 0 0.4rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  color: var(--muted);
+}
+
+.note {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
 }
