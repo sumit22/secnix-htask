@@ -1,0 +1,66 @@
+# Module boundaries (docs/hld.md §2). A module may use only its own code, Shared, and other modules' Contracts.
+# Factories are test support and may cross modules.
+deptrac:
+  paths:
+    - ./app
+  exclude_files:
+    - '#/Database/Factories/#'
+  cache_file: storage/framework/cache/deptrac.cache
+
+  layers:
+    - name: Shared
+      collectors:
+        - { type: classLike, value: '^App\\Modules\\Shared\\' }
+
+    - name: IdentityContracts
+      collectors:
+        - { type: classLike, value: '^App\\Modules\\Identity\\Contracts\\' }
+    - name: Identity
+      collectors:
+        - type: bool
+          must: [{ type: classLike, value: '^App\\Modules\\Identity\\' }]
+          must_not: [{ type: classLike, value: '^App\\Modules\\Identity\\Contracts\\' }]
+
+    - name: ProvidersContracts
+      collectors:
+        - { type: classLike, value: '^App\\Modules\\Providers\\Contracts\\' }
+    - name: Providers
+      collectors:
+        - type: bool
+          must: [{ type: classLike, value: '^App\\Modules\\Providers\\' }]
+          must_not: [{ type: classLike, value: '^App\\Modules\\Providers\\Contracts\\' }]
+
+    - name: QuotaContracts
+      collectors:
+        - { type: classLike, value: '^App\\Modules\\Quota\\Contracts\\' }
+    - name: Quota
+      collectors:
+        - type: bool
+          must: [{ type: classLike, value: '^App\\Modules\\Quota\\' }]
+          must_not: [{ type: classLike, value: '^App\\Modules\\Quota\\Contracts\\' }]
+
+    - name: LookupsContracts
+      collectors:
+        - { type: classLike, value: '^App\\Modules\\Lookups\\Contracts\\' }
+    - name: Lookups
+      collectors:
+        - type: bool
+          must: [{ type: classLike, value: '^App\\Modules\\Lookups\\' }]
+          must_not: [{ type: classLike, value: '^App\\Modules\\Lookups\\Contracts\\' }]
+
+    # Composition root: console commands, HTTP kernel, app service providers.
+    - name: App
+      collectors:
+        - { type: classLike, value: '^App\\(Console|Http|Providers)\\' }
+
+  ruleset:
+    Shared: ~
+    IdentityContracts: [Shared]
+    Identity: [IdentityContracts, Shared]
+    ProvidersContracts: [Shared]
+    Providers: [ProvidersContracts, Shared]
+    QuotaContracts: [Shared]
+    Quota: [QuotaContracts, Shared]
+    LookupsContracts: [Shared]
+    Lookups: [LookupsContracts, Shared, IdentityContracts, ProvidersContracts, QuotaContracts]
+    App: [Shared, IdentityContracts, ProvidersContracts, QuotaContracts, LookupsContracts]

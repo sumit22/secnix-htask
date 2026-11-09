@@ -90,6 +90,7 @@ jobs:
       - run: cp .env.example .env && php artisan key:generate
       - run: composer lint
       - run: composer analyse
+      - run: composer deptrac
       - run: composer test
       - name: Shared contracts are up to date
         run: |
