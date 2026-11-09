@@ -61,6 +61,6 @@ deptrac:
     Providers: [ProvidersContracts, Shared]
     QuotaContracts: [Shared]
     Quota: [QuotaContracts, Shared]
-    LookupsContracts: [Shared]
+    LookupsContracts: [Shared, IdentityContracts, QuotaContracts]
     Lookups: [LookupsContracts, Shared, IdentityContracts, ProvidersContracts, QuotaContracts]
     App: [Shared, IdentityContracts, ProvidersContracts, QuotaContracts, LookupsContracts]
