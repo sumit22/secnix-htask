@@ -4,7 +4,8 @@
   "description": "Repo-level tooling only (git hooks, commit linting). Apps live in apps/*.",
   "scripts": {
     "prepare": "lefthook install",
-    "ai:usage": "node scripts/ai-usage.mjs"
+    "ai:usage": "node scripts/ai-usage.mjs",
+    "contracts:export": "docker compose exec -T api php artisan contracts:export > apps/web/src/contracts/generated.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
