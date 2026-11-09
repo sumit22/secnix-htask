@@ -92,11 +92,37 @@ jobs:
       - run: composer analyse
       - run: composer deptrac
       - run: composer test
-      - name: Shared contracts are up to date
+
+  contracts:
+    name: Shared FE/BE contracts up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: shivammathur/setup-php@2.40.0
+        with:
+          php-version: "8.5"
+          extensions: pdo_pgsql, intl
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: composer install --no-interaction --prefer-dist --no-progress
+        working-directory: apps/api
+      - run: npm ci --ignore-scripts
+        working-directory: apps/web
+      - name: Regenerate enums, schemas and types
         run: |
-          php artisan contracts:export > ../web/src/contracts/generated.ts
-          git diff --exit-code -- ../web/src/contracts/generated.ts \
-            || { echo "::error::Run 'npm run contracts:export' and commit apps/web/src/contracts/generated.ts"; exit 1; }
+          cp apps/api/.env.example apps/api/.env && php apps/api/artisan key:generate
+          php apps/api/artisan contracts:export > apps/web/src/contracts/generated.ts
+          php apps/api/artisan contracts:export --schema > contracts/schemas/enums.schema.json
+          node scripts/contracts.mjs
+      - name: Fail on drift
+        run: |
+          git diff --exit-code -- contracts apps/web/src/contracts apps/api/tests/Contracts \
+            || { echo "::error::Contracts drifted. Run 'npm run contracts' and commit the result."; exit 1; }
 
   docker:
     name: Docker images
