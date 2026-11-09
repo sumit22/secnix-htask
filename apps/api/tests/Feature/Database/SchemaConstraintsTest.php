@@ -58,19 +58,19 @@ final class SchemaConstraintsTest extends TestCase
     public function test_idempotency_key_is_unique_per_requester(): void
     {
         $userId = $this->user();
-        $this->lookup(userId: $userId, idempotencyKey: 'retry-1', indicator: 'a.example.com');
+        $lookupId = $this->lookup();
+        $this->idempotencyKey($userId, 'retry-1', $lookupId);
 
-        $this->assertViolates(self::UNIQUE_VIOLATION, fn () => $this->lookup(
-            userId: $userId, idempotencyKey: 'retry-1', indicator: 'b.example.com',
-        ));
+        $this->assertViolates(self::UNIQUE_VIOLATION, fn () => $this->idempotencyKey($userId, 'retry-1', $lookupId));
     }
 
     public function test_same_idempotency_key_is_allowed_for_different_requesters(): void
     {
-        $this->lookup(userId: $this->user(), idempotencyKey: 'shared', indicator: 'a.example.com');
-        $this->lookup(userId: $this->user(), idempotencyKey: 'shared', indicator: 'b.example.com');
+        $lookupId = $this->lookup();
+        $this->idempotencyKey($this->user(), 'shared', $lookupId);
+        $this->idempotencyKey($this->user(), 'shared', $lookupId);
 
-        self::assertSame(2, DB::table('lookup_requests')->count());
+        self::assertSame(2, DB::table('idempotency_keys')->count());
     }
 
     public function test_an_indicator_can_have_only_one_active_lookup(): void
@@ -185,7 +185,6 @@ final class SchemaConstraintsTest extends TestCase
         string $status = 'completed',
         string $indicator = 'example.com',
         string $indicatorType = 'domain',
-        ?string $idempotencyKey = null,
         ?string $leaseExpiresAt = '2026-11-09 00:05:00+00',
     ): string {
         $userId ??= $this->user();
@@ -194,12 +193,21 @@ final class SchemaConstraintsTest extends TestCase
             'provider_id' => $providerId ?? $this->provider(),
             'team_id' => DB::table('users')->where('id', $userId)->value('team_id'),
             'requested_by' => $userId,
-            'idempotency_key' => $idempotencyKey ?? Str::uuid()->toString(),
-            'request_hash' => hash('sha256', $indicator),
             'indicator_type' => $indicatorType,
             'indicator_value' => $indicator,
             'status' => $status,
             'lease_expires_at' => $leaseExpiresAt,
+        ]);
+    }
+
+    private function idempotencyKey(string $userId, string $key, string $lookupId): void
+    {
+        DB::table('idempotency_keys')->insert([
+            'requested_by' => $userId,
+            'idempotency_key' => $key,
+            'request_hash' => hash('sha256', $key),
+            'lookup_request_id' => $lookupId,
+            'deduplicated' => false,
         ]);
     }
 

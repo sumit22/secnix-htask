@@ -20,8 +20,6 @@ return new class extends Migration
             $table->foreignUuid('team_id')->constrained()->restrictOnDelete();
             $table->foreignUuid('quota_allocation_id')->nullable()->constrained()->restrictOnDelete();
             $table->foreignUuid('requested_by')->constrained('users')->restrictOnDelete();
-            $table->string('idempotency_key', 100);
-            $table->char('request_hash', 64);
             $table->string('indicator_type', 10);
             $table->string('indicator_value', 255);
             $table->string('status', 10);
@@ -31,8 +29,6 @@ return new class extends Migration
             $table->timestampTz('expired_at')->nullable();
             $table->jsonb('result')->nullable();
             $table->timestampsTz();
-
-            $table->unique(['requested_by', 'idempotency_key']);
         });
 
         $statuses = $this->sqlList(array_column(LookupStatus::cases(), 'value'));

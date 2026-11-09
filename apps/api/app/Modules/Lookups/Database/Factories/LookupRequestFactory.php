@@ -34,8 +34,6 @@ final class LookupRequestFactory extends Factory
 
                 return User::query()->findOrFail($requesterId)->team_id;
             },
-            'idempotency_key' => Str::uuid()->toString(),
-            'request_hash' => hash('sha256', $indicator),
             'indicator_type' => IndicatorType::Domain,
             'indicator_value' => $indicator,
             'status' => LookupStatus::Queued,

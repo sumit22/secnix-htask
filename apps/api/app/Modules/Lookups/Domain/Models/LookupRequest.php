@@ -26,8 +26,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $team_id
  * @property string|null $quota_allocation_id
  * @property string $requested_by
- * @property string $idempotency_key
- * @property string $request_hash
  * @property IndicatorType $indicator_type
  * @property string $indicator_value
  * @property LookupStatus $status
@@ -40,7 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read LookupQueueEntry|null $queueEntry
  */
 #[Fillable([
-    'provider_id', 'team_id', 'quota_allocation_id', 'requested_by', 'idempotency_key', 'request_hash',
+    'provider_id', 'team_id', 'quota_allocation_id', 'requested_by',
     'indicator_type', 'indicator_value', 'status', 'leased_at', 'lease_expires_at', 'completed_at',
     'expired_at', 'result',
 ])]
