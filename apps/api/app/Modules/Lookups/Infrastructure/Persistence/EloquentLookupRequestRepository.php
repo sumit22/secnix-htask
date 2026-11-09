@@ -21,7 +21,7 @@ final class EloquentLookupRequestRepository implements LookupRequestRepository
 
     public function lockById(string $id): ?LookupRequest
     {
-        return LookupRequest::query()->lockForUpdate()->find($id);
+        return LookupRequest::query()->lock('FOR NO KEY UPDATE')->find($id);
     }
 
     public function findActive(string $providerId, Indicator $indicator): ?LookupRequest
@@ -51,7 +51,7 @@ final class EloquentLookupRequestRepository implements LookupRequestRepository
             ->where('status', LookupStatus::Leased)
             ->where('lease_expires_at', '<=', $now)
             ->orderBy('lease_expires_at')
-            ->lock('FOR UPDATE SKIP LOCKED')
+            ->lock('FOR NO KEY UPDATE SKIP LOCKED')
             ->get()
             ->all());
     }

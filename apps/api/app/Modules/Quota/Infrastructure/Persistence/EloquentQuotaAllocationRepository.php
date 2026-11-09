@@ -34,7 +34,7 @@ final class EloquentQuotaAllocationRepository implements QuotaAllocationReposito
 
     public function lockById(string $id): QuotaAllocation
     {
-        return QuotaAllocation::query()->lockForUpdate()->findOrFail($id);
+        return QuotaAllocation::query()->lock('FOR NO KEY UPDATE')->findOrFail($id);
     }
 
     public function adjust(string $id, int $reservedDelta, int $consumedDelta): void

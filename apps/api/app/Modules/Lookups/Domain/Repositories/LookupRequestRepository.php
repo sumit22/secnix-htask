@@ -13,7 +13,7 @@ interface LookupRequestRepository
 {
     public function find(string $id): ?LookupRequest;
 
-    /** Row lock (FOR UPDATE) held until the transaction ends. */
+    /** Row lock held until the transaction ends; NO KEY UPDATE so FK checks (FOR KEY SHARE) from other writers never deadlock with it. */
     public function lockById(string $id): ?LookupRequest;
 
     public function findActive(string $providerId, Indicator $indicator): ?LookupRequest;

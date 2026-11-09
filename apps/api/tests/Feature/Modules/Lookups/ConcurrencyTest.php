@@ -6,6 +6,7 @@ namespace Tests\Feature\Modules\Lookups;
 
 use App\Modules\Identity\Contracts\RequesterDirectory;
 use App\Modules\Identity\Domain\Models\Analyst;
+use App\Modules\Lookups\Application\LookupViewFactory;
 use App\Modules\Lookups\Contracts\EnrichmentRequest;
 use App\Modules\Lookups\Contracts\Enums\LookupStatus;
 use App\Modules\Lookups\Contracts\RequestEnrichment;
@@ -13,8 +14,16 @@ use App\Modules\Lookups\Contracts\RunLookup;
 use App\Modules\Lookups\Domain\Models\IdempotencyKey;
 use App\Modules\Lookups\Domain\Models\LookupQueueEntry;
 use App\Modules\Lookups\Domain\Models\LookupRequest;
+use App\Modules\Providers\Application\ProviderCatalogService;
+use App\Modules\Providers\Contracts\Enums\Verdict;
+use App\Modules\Providers\Contracts\ProviderCatalog;
+use App\Modules\Providers\Contracts\ProviderResult;
+use App\Modules\Providers\Contracts\ThreatIntelProvider;
 use App\Modules\Providers\Domain\Models\Provider;
+use App\Modules\Providers\Domain\Repositories\ProviderRepository;
 use App\Modules\Quota\Domain\Models\QuotaAllocation;
+use App\Modules\Shared\Indicators\Indicator;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -106,6 +115,52 @@ final class ConcurrencyTest extends TestCase
         self::assertSame([0, 1], [$quota->reserved, $quota->consumed]);
     }
 
+    /** Audit #1: run (row lock held across a slow provider call) vs a dedup request (FK check on that row). */
+    public function test_run_in_flight_does_not_deadlock_with_a_deduplicated_request(): void
+    {
+        $this->request('evil.example.com', 'k', analyst: 0);
+        $lookupId = LookupRequest::query()->sole()->id;
+
+        $results = $this->inParallel(function (int $i) use ($lookupId): void {
+            if ($i === 0) {
+                $this->useSlowProvider(seconds: 2);
+                $requester = $this->app->make(RequesterDirectory::class)->find($this->analystIds[0]);
+                self::assertNotNull($requester);
+                $this->app->make(RunLookup::class)->run($lookupId, $requester);
+
+                return;
+            }
+            usleep(500_000); // arrive while the provider call is in flight
+            $this->request('evil.example.com', "dedup-{$i}", analyst: 1);
+        }, workers: 5);
+
+        self::assertSame(array_fill(0, 5, 'ok'), $results);
+        $quota = QuotaAllocation::query()->sole();
+        self::assertSame([0, 1], [$quota->reserved, $quota->consumed]);
+        self::assertSame(5, IdempotencyKey::query()->count());
+    }
+
+    private function useSlowProvider(int $seconds): void
+    {
+        $slow = new class($seconds) implements ThreatIntelProvider
+        {
+            public function __construct(private readonly int $seconds) {}
+
+            public function lookup(Indicator $indicator): ProviderResult
+            {
+                sleep($this->seconds);
+
+                return new ProviderResult(Verdict::Harmless, 1, [], CarbonImmutable::now());
+            }
+        };
+        $this->app->instance(ProviderCatalog::class, new ProviderCatalogService(
+            $this->app->make(ProviderRepository::class),
+            ['mock-intel' => $slow],
+        ));
+        $this->app->forgetInstance(RunLookup::class);
+        $this->app->forgetInstance(LookupViewFactory::class);
+    }
+
     private function request(string $indicator, string $key, ?int $analyst = null): void
     {
         $requester = $this->app->make(RequesterDirectory::class)
@@ -121,7 +176,7 @@ final class ConcurrencyTest extends TestCase
      * @param  callable(int): void  $work
      * @return list<string>
      */
-    private function inParallel(callable $work): array
+    private function inParallel(callable $work, int $workers = self::WORKERS): array
     {
         DB::disconnect(); // children must not share the parent's socket
         $dir = sys_get_temp_dir().'/concurrency-'.bin2hex(random_bytes(4));
@@ -129,7 +184,7 @@ final class ConcurrencyTest extends TestCase
         $startAt = microtime(true) + 1.0;
         $pids = [];
 
-        for ($i = 0; $i < self::WORKERS; $i++) {
+        for ($i = 0; $i < $workers; $i++) {
             $pid = pcntl_fork();
             if ($pid === 0) {
                 time_sleep_until($startAt);
@@ -149,7 +204,7 @@ final class ConcurrencyTest extends TestCase
         }
 
         $results = [];
-        for ($i = 0; $i < self::WORKERS; $i++) {
+        for ($i = 0; $i < $workers; $i++) {
             $results[] = (string) @file_get_contents("{$dir}/{$i}");
             @unlink("{$dir}/{$i}");
         }

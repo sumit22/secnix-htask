@@ -12,7 +12,7 @@ use Carbon\CarbonImmutable;
  */
 interface QuotaLedger
 {
-    /** Today's allocation (created on first use), row-locked FOR UPDATE. */
+    /** Today's allocation (created on first use), row-locked (FOR NO KEY UPDATE) until the transaction ends. */
     public function lock(string $providerId, CarbonImmutable $at): QuotaSnapshot;
 
     /** Read-only view for dashboards. */
