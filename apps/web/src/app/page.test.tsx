@@ -6,5 +6,5 @@ it("renders the title", () => {
   render(<Home />);
   expect(
     screen.getByRole("heading", { name: "Enrichment Lookup Coordinator" }),
-  ).toBeTruthy();
+  ).toBeInTheDocument();
 });
