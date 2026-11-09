@@ -18,6 +18,7 @@ use App\Modules\Shared\Exceptions\DomainError;
 use App\Modules\Shared\Indicators\Indicator;
 use App\Modules\Shared\Time\Clock;
 use LogicException;
+use Throwable;
 
 final readonly class RunLookupService implements RunLookup
 {
@@ -77,8 +78,17 @@ final readonly class RunLookupService implements RunLookup
         }
 
         $provider = $this->providers->findById($lookup->provider_id) ?? throw new LogicException('Provider vanished.');
-        $result = $this->providers->client($provider)
-            ->lookup(new Indicator($lookup->indicator_type, $lookup->indicator_value));
+        try {
+            $result = $this->providers->client($provider)
+                ->lookup(new Indicator($lookup->indicator_type, $lookup->indicator_value));
+        } catch (DomainError $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            // Any provider fault rolls back with the lease intact; the analyst can retry within the TTL.
+            report($e);
+
+            throw new DomainError(ApiErrorCode::ProviderUnavailable, 'The provider is unavailable; retry shortly.', ['Retry-After' => '5']);
+        }
 
         if ($lookup->quota_allocation_id === null) {
             throw new LogicException('Leased lookup without an allocation.');
