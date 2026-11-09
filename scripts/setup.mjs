@@ -29,15 +29,18 @@ async function waitFor(url, label, timeoutMs = 300_000) {
   throw new Error(`${label} did not become healthy within ${timeoutMs / 1000}s`);
 }
 
-const envFile = join(root, '.env');
-if (!existsSync(envFile)) {
-  copyFileSync(join(root, '.env.example'), envFile);
-  console.log('Created .env from .env.example');
-}
-const env = readFileSync(envFile, 'utf8');
-if (/^APP_KEY=\s*$/m.test(env)) {
-  writeFileSync(envFile, env.replace(/^APP_KEY=\s*$/m, `APP_KEY=base64:${randomBytes(32).toString('base64')}`));
-  console.log('Generated APP_KEY in .env');
+// Root .env feeds docker compose; apps/api/.env is what Laravel's tooling (tests, artisan) reads in the container.
+for (const dir of ['.', 'apps/api']) {
+  const envFile = join(root, dir, '.env');
+  if (!existsSync(envFile)) {
+    copyFileSync(join(root, dir, '.env.example'), envFile);
+    console.log(`Created ${dir}/.env from .env.example`);
+  }
+  const env = readFileSync(envFile, 'utf8');
+  if (/^APP_KEY=\s*$/m.test(env)) {
+    writeFileSync(envFile, env.replace(/^APP_KEY=\s*$/m, `APP_KEY=base64:${randomBytes(32).toString('base64')}`));
+    console.log(`Generated APP_KEY in ${dir}/.env`);
+  }
 }
 
 sh('docker compose build');
