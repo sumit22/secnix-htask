@@ -32,11 +32,14 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const ApiErrorCode = {
   ValidationFailed: "validation_failed",
+  AnalystNotFound: "analyst_not_found",
+  IdempotencyKeyMissing: "idempotency_key_missing",
   IdempotencyKeyReused: "idempotency_key_reused",
+  NotFound: "not_found",
+  Forbidden: "forbidden",
   LeaseExpired: "lease_expired",
   LeaseNotActive: "lease_not_active",
-  NotFound: "not_found",
-  AnalystNotFound: "analyst_not_found",
+  ProviderUnavailable: "provider_unavailable",
 } as const;
 export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
 
