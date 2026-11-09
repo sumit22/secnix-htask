@@ -5,6 +5,7 @@ services:
       - "${DB_PORT_HOST:-5432}:5432"
 
   api:
+    image: secnix-htask-api-dev
     build:
       target: dev
     read_only: false
@@ -18,6 +19,22 @@ services:
     volumes:
       - ./apps/api:/app
       - ./apps/api/storage:/app/storage   # replaces the prod named volume in dev
+
+  worker: &dev-api-process
+    image: secnix-htask-api-dev
+    build:
+      context: ./apps/api
+      target: dev
+    read_only: false
+    user: "0:0"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+    volumes:
+      - ./apps/api:/app
+      - ./apps/api/storage:/app/storage
+
+  scheduler: *dev-api-process
 
   web:
     build:

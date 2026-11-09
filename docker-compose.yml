@@ -31,7 +31,8 @@ services:
     build:
       context: ./apps/api
       target: prod
-    environment:
+    image: secnix-htask-api
+    environment: &api-env
       APP_ENV: ${APP_ENV:-production}
       APP_KEY: ${APP_KEY:-}   # required at runtime; Laravel refuses to boot without it
       APP_DEBUG: ${APP_DEBUG:-false}
@@ -40,6 +41,7 @@ services:
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-database}
       ENRICHMENT_LEASE_TTL_SECONDS: ${ENRICHMENT_LEASE_TTL_SECONDS:-300}
       ENRICHMENT_DEFAULT_DAILY_QUOTA: ${ENRICHMENT_DEFAULT_DAILY_QUOTA:-10}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: 5432
@@ -56,6 +58,39 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  # Same image, different process types (12-factor): queue consumer and the single scheduler.
+  worker:
+    <<: *hardening
+    image: secnix-htask-api
+    command: ["php", "artisan", "queue:work", "--sleep=1", "--tries=3", "--max-time=3600"]
+    environment: *api-env
+    volumes:
+      - api_storage:/app/storage
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/bootstrap/cache:uid=10001,gid=10001,mode=1777
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_started
+
+  scheduler:
+    <<: *hardening
+    image: secnix-htask-api
+    command: ["php", "artisan", "schedule:work"]
+    environment: *api-env
+    volumes:
+      - api_storage:/app/storage
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/bootstrap/cache:uid=10001,gid=10001,mode=1777
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_started
 
   web:
     <<: *hardening
