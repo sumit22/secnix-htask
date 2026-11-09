@@ -2,7 +2,7 @@
 export default {
   extends: ['@commitlint/config-conventional'],
   rules: {
-    'scope-enum': [2, 'always', ['api', 'web', 'db', 'docker', 'ci', 'docs', 'ai', 'deps', 'repo']],
+    'scope-enum': [2, 'always', ['api', 'web', 'e2e', 'contracts', 'db', 'docker', 'ci', 'docs', 'ai', 'deps', 'repo']],
     'body-max-line-length': [1, 'always', 100],
   },
 };
