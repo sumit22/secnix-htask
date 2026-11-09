@@ -17,8 +17,24 @@ Next.js (web) ──HTTP/JSON──▶ Laravel (api) ──▶ PostgreSQL 18
                        scheduler (schedule:work) ──┘   lease-expiry sweep every 10 s
 ```
 
-Layering in the API: route → thin controller + FormRequest → action/service → Eloquent/DB.
 **All quota correctness lives in the database** (transactions, row locks, constraints), never in process memory.
+
+### API modules (`apps/api/app/Modules`)
+
+| Module | Owns | Public contracts (planned as flows land) |
+|---|---|---|
+| Shared | Indicator value object + normaliser, `ApiErrorCode`, `Clock`, `TransactionRunner` | — |
+| Identity | Team, User, Analyst, `UserRole` | `RequesterDirectory` |
+| Providers | Provider, `Verdict`, mock provider | `ThreatIntelProvider`, `ProviderCatalog` |
+| Quota | QuotaAllocation | `QuotaLedger` (reserve / release / consume / snapshot) |
+| Lookups | LookupRequest, queue, `LookupStatus` | `RequestEnrichment`, `RunLookup`, `ExpireLeases`, `LookupStatusQuery` |
+
+- Layout per module: `Contracts/` (public interfaces, DTOs, enums), `Domain/` (models, repository interfaces), `Application/` (services), `Infrastructure/` (Eloquent repositories, adapters), `Http/`, `<Module>ServiceProvider`.
+- Services depend on interfaces (SOLID/DIP); Eloquent lives only in models and `Infrastructure` repositories.
+- Cross-module references are **IDs only** (no cross-module Eloquent relations); data crosses through `Contracts` DTOs. DB foreign keys still enforce integrity.
+- Dependency rule: `Lookups → {Identity, Providers, Quota}.Contracts → Shared`. Enforced by **Deptrac** (`composer deptrac`, pre-commit and CI).
+- Atomicity across modules: the orchestrating service opens one transaction (`TransactionRunner`); other modules' contracts run inside it. Lock order: quota row → lookup rows.
+- 12-factor: config via env, logs to stderr, stateless processes (web / worker / scheduler), backing services attached by config, one-off admin processes (migrate, seed).
 
 ## 3. Data model
 

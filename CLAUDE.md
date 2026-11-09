@@ -15,9 +15,9 @@ Enrichment Lookup Coordinator — shares a 10-lookup/day threat-intel provider q
 
 ## Commands (run via Docker; no host PHP)
 - Up: `docker compose up -d --build` · Migrate: `docker compose exec api php artisan migrate`
-- API checks: `docker compose exec api composer lint|analyse|test` (Pint, Larastan max, tests)
+- API checks: `docker compose exec api composer lint|analyse|deptrac|test` (Pint, Larastan max, module boundaries, tests)
 - Web checks: `docker compose exec web npm run lint|typecheck|test`
-- Shared enums → TS: `npm run contracts:export` (after changing any `app/Enums/*`; CI fails on drift)
+- Shared enums → TS: `npm run contracts:export` (after changing any `Contracts` or `Shared` enum; CI fails on drift)
 - Seed: `docker compose exec api php artisan db:seed` (idempotent)
 - Token/prompt report: `node scripts/ai-usage.mjs` → `docs/ai/token-usage.md`
 
@@ -27,7 +27,13 @@ Enrichment Lookup Coordinator — shares a 10-lookup/day threat-intel provider q
 - Web: Vitest + Testing Library (`npm run test:watch`), `*.test.ts(x)` next to the code.
 - One-shot gates: `composer check` (api), `npm run check` (web).
 
+## Modules (API)
+- `app/Modules/{Shared,Identity,Providers,Quota,Lookups}`; layout and rules in `docs/hld.md` §2.
+- Import only your own module, `Shared`, and other modules' `Contracts`. Reference other modules by ID; no cross-module Eloquent relations. `composer deptrac` must pass.
+- Services and repositories are interfaces bound in the module's ServiceProvider; Eloquent only in models and `Infrastructure`.
+
 ## Rules
+- Comments: precise and minimal — a one-line "why", never a restatement of the code.
 - Correctness of quota under concurrency lives in the **database** (transactions, row locks / conditional updates, unique constraints) — never in app memory.
 - PHP: `declare(strict_types=1)`, typed everything, Larastan max must pass. TS: strict config, no `any`, lint + typecheck must pass.
 - Containers stay non-root, read-only rootfs, pinned image tags. Never commit `.env` or secrets.
