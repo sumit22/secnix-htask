@@ -165,7 +165,7 @@ Authentication (Sanctum) and team-scoped reads · rate limiting per analyst · S
 ## AI usage
 
 - Built with Claude Code (Opus 5.5 main session; Sonnet subagents for scaffolding, the web UI and Playwright tests; an independent reviewer agent for the audit).
-- Prompts: [docs/ai/prompts.md](docs/ai/prompts.md) · full chat: [docs/ai/chat-history.md](docs/ai/chat-history.md) · tokens: [docs/ai/token-usage.md](docs/ai/token-usage.md) — exported automatically by a Stop hook (`scripts/ai-usage.mjs`).
+- Prompts: [docs/ai/prompts.md](docs/ai/prompts.md) · full chat: [docs/ai/chat-history.md](docs/ai/chat-history.md) · tokens: [docs/ai/token-usage.md](docs/ai/token-usage.md) — exported from the Claude Code transcripts with `npm run ai:usage` (`scripts/ai-usage.mjs`).
 - Build time: first prompt 2026-11-09 09:54 UTC; see `docs/ai/token-usage.md` for the end time and totals.
 
 ### Where the AI was wrong and what changed
