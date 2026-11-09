@@ -91,6 +91,11 @@ jobs:
       - run: composer lint
       - run: composer analyse
       - run: composer test
+      - name: Shared contracts are up to date
+        run: |
+          php artisan contracts:export > ../web/src/contracts/generated.ts
+          git diff --exit-code -- ../web/src/contracts/generated.ts \
+            || { echo "::error::Run 'npm run contracts:export' and commit apps/web/src/contracts/generated.ts"; exit 1; }
 
   docker:
     name: Docker images
