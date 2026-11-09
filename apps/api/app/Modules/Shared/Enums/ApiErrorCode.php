@@ -16,6 +16,8 @@ enum ApiErrorCode: string
     case LeaseExpired = 'lease_expired';
     case LeaseNotActive = 'lease_not_active';
     case ProviderUnavailable = 'provider_unavailable';
+    case HttpError = 'http_error';
+    case InternalError = 'internal_error';
 
     public function httpStatus(): int
     {
@@ -26,6 +28,8 @@ enum ApiErrorCode: string
             self::LeaseExpired, self::LeaseNotActive => 409,
             self::ValidationFailed, self::AnalystNotFound, self::IdempotencyKeyReused => 422,
             self::ProviderUnavailable => 503,
+            self::HttpError => 400, // overridden by the framework exception's own status
+            self::InternalError => 500,
         };
     }
 }

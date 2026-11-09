@@ -15,6 +15,7 @@ final readonly class QuotaController
 
     public function show(Request $request): JsonResponse
     {
+        $request->validate(['provider' => ['nullable', 'string', 'max:50']]);
         $provider = $request->filled('provider') ? $request->string('provider')->toString() : null;
 
         return new JsonResponse(['data' => $this->query->dashboard($provider)->toArray()]);

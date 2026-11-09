@@ -16,6 +16,7 @@ use App\Modules\Shared\Enums\ApiErrorCode;
 use App\Modules\Shared\Exceptions\DomainError;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use LogicException;
 
 final readonly class LookupController
@@ -54,6 +55,10 @@ final readonly class LookupController
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'requested_by' => ['nullable', 'uuid'],
+            'status' => ['nullable', Rule::enum(LookupStatus::class)],
+        ]);
         $status = $request->enum('status', LookupStatus::class);
         $requestedBy = $request->filled('requested_by') ? $request->string('requested_by')->toString() : null;
 

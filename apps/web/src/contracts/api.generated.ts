@@ -23,7 +23,9 @@ export interface ApiErrorEnvelope {
       | "forbidden"
       | "lease_expired"
       | "lease_not_active"
-      | "provider_unavailable";
+      | "provider_unavailable"
+      | "http_error"
+      | "internal_error";
     message: string;
     fields?: {
       [k: string]: string[];

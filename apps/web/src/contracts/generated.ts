@@ -40,6 +40,8 @@ export const ApiErrorCode = {
   LeaseExpired: "lease_expired",
   LeaseNotActive: "lease_not_active",
   ProviderUnavailable: "provider_unavailable",
+  HttpError: "http_error",
+  InternalError: "internal_error",
 } as const;
 export type ApiErrorCode = (typeof ApiErrorCode)[keyof typeof ApiErrorCode];
 
