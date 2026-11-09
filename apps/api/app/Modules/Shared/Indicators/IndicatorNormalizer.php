@@ -38,11 +38,21 @@ final class IndicatorNormalizer
         if (filter_var($value, FILTER_VALIDATE_IP) !== false) {
             $packed = inet_pton($value);
 
+            // ::ffff:a.b.c.d is the same host as a.b.c.d.
+            if ($packed !== false && strlen($packed) === 16 && str_starts_with($packed, str_repeat("\0", 10)."\xff\xff")) {
+                $packed = substr($packed, 12);
+            }
+
             return new Indicator(IndicatorType::Ip, $packed === false ? $value : (string) inet_ntop($packed));
         }
 
         if (in_array(strlen($value), self::HASH_LENGTHS, true) && ctype_xdigit($value)) {
             return new Indicator(IndicatorType::Hash, $value);
+        }
+
+        if (preg_match('/[^\x00-\x7F]/', $value) === 1) {
+            $ascii = idn_to_ascii($value, IDNA_DEFAULT, INTL_IDNA_VARIANT_UTS46);
+            $value = $ascii === false ? $value : $ascii;
         }
 
         if (preg_match(self::DOMAIN_PATTERN, $value) === 1) {

@@ -18,6 +18,8 @@ final class IndicatorNormalizerTest extends TestCase
         yield 'ipv4' => ['8.8.8.8', IndicatorType::Ip, '8.8.8.8'];
         yield 'ipv4 padded' => ['  10.0.0.1 ', IndicatorType::Ip, '10.0.0.1'];
         yield 'ipv6 canonicalised' => ['2001:0DB8:0000:0000:0000:0000:0000:0001', IndicatorType::Ip, '2001:db8::1'];
+        yield 'ipv4-mapped ipv6 folds to ipv4' => ['::ffff:8.8.8.8', IndicatorType::Ip, '8.8.8.8'];
+        yield 'unicode domain to punycode' => ['Bücher.de', IndicatorType::Domain, 'xn--bcher-kva.de'];
         yield 'domain lowercased' => ['Example.COM', IndicatorType::Domain, 'example.com'];
         yield 'domain trailing dot' => ['evil.example.org.', IndicatorType::Domain, 'evil.example.org'];
         yield 'md5' => [str_repeat('A', 32), IndicatorType::Hash, str_repeat('a', 32)];
