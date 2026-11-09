@@ -1,0 +1,39 @@
+# Local development overrides (auto-merged by `docker compose`).
+services:
+  db:
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432"
+
+  api:
+    build:
+      target: dev
+    read_only: false
+    user: "0:0"   # bind-mounted source is root-owned on Docker Desktop; dev only (prod runs as uid 10001)
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      XDEBUG_MODE: ${XDEBUG_MODE:-off}   # set to "debug" to enable step debugging (port 9003)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./apps/api:/app
+      - ./apps/api/storage:/app/storage   # replaces the prod named volume in dev
+
+  web:
+    build:
+      target: dev
+    read_only: false
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      WATCHPACK_POLLING: "true"   # reliable file watching on Windows/macOS bind mounts
+    volumes:
+      - ./apps/web:/app
+      - web_node_modules:/app/node_modules
+      - web_next:/app/.next
+    ports:
+      - "9229:9229"   # Node inspector (npm run dev:debug)
+
+volumes:
+  web_node_modules:
+  web_next:
