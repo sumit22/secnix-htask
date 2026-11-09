@@ -45,3 +45,48 @@ confirm that both apps are ready for development, TDD is setup, use unitest inst
 ```text
 commit and prepare for next
 ```
+
+## 6. 2026-11-09T10:48:26.534Z
+
+```text
+When analysts investigate an indicator (an IP, domain or file hash), they 'enrich' it by querying third-party threat intelligence providers for its reputation, related malware families and so on. These integrations are usually rate-limited or quota-limited. Many analysts and automated playbooks ask for lookups at the same time, and a retried request must not burn extra quota.
+
+this paragraph explicitly talks about providers, so we are going to build the platform supporrting multiple providers, each providers may have its own org level quota of services for the platforms
+
+we are building one of those platforms, we need to team level quotas on top of org level quota, but start with one default team for now
+
+Concurrency | Leases and expiry | Queue | Idempotency : these are most important and cant be ignored during implementation
+
+correct me if i am wrong
+```
+
+## 7. 2026-11-09T10:52:25.881Z
+
+```text
+lets keep it simple but scalable for future, can ji see the db schema you want to propose
+```
+
+## 8. 2026-11-09T10:56:45.918Z
+
+```text
+how this fits with laravel's user models, analysts will be a subclass of that user
+we also need to define basic state machines, status definitions, enums, constants etc, some of these will be shared with frontend as well
+```
+
+## 9. 2026-11-09T11:00:01.185Z
+
+```text
+why bigserial and not ulid or similar
+```
+
+## 10. 2026-11-09T11:02:33.801Z
+
+```text
+how we are going to manage queues, for now db queues are fine supported by laravel, but we must support SQS or rabbitMQ
+```
+
+## 11. 2026-11-09T11:05:47.892Z
+
+```text
+okay start dev with TDD, models migrations, config and other things as discussed above first
+```
